@@ -1,5 +1,3 @@
-include_directories(${CMAKE_SOURCE_DIR}/include)
-
 set(HSTAR_LIBS
 	hstar_util
 	# crypto ssl

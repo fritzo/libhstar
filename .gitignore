@@ -1,3 +1,9 @@
+build/
+data/
+*.egg-info/
+*.pyo
+*.py
+
 # Object files
 *.o
 *.ko

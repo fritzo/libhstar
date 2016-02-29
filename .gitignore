@@ -2,7 +2,7 @@ build/
 data/
 *.egg-info/
 *.pyo
-*.py
+*.pyc
 
 # Object files
 *.o

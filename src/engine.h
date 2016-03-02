@@ -10,7 +10,7 @@ typedef uint32_t Ob;
 int un_init(size_t size);
 
 Ob un_simplify_app(Ob lhs, Ob rhs);
-Ob un_reduce_app(Ob lhs, Ob rhs, int* budget);
+Ob un_reduce_app(Ob lhs, Ob rhs, int *budget);
 
 Ob un_simplify(Ob ob);
-Ob un_reduce(Ob ob, int* budget);
+Ob un_reduce(Ob ob, int *budget);

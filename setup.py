@@ -27,9 +27,9 @@ config = {
     'maintainer_email': 'fritz.obermeyer@gmail.com',
     'license': 'Apache 2.0',
     'packages': setuptools.find_packages(exclude='src'),
-    'setup_requires': ['cffi>=1.0.0'],
-    'cffi_modules': ['example_build.py:ffi'],
-    'install_requires': ['cffi>=1.0.0'],
+    # 'setup_requires': ['cffi>=1.0.0'],
+    # 'cffi_modules': ['example_build.py:ffi'],
+    # 'install_requires': ['cffi>=1.0.0'],
 }
 
 setuptools.setup(**config)

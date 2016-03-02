@@ -1,10 +1,13 @@
 #include "engine.h"
 
-int main(int argc, char ** argv) {
+#include <stdio.h>
 
-    hstar_init(1UL << 20UL);
+int main(int argc, char **argv) {
+    un_init(1UL << 20UL);
 
-    // TODO loop.
+    for (int i = 1; i < argc; ++i) {
+        printf("example %s -> TODO", argv[i]);
+    }
 
     return 0;
 }

@@ -12,7 +12,7 @@ lint: FORCE
 
 format: FORCE
 	pyformat -i $(PY_FILES)
-	clang-format -i --style=Google $(C_FILES)
+	clang-format -i $(C_FILES)
 
 python: lint FORCE
 	pip install -e .

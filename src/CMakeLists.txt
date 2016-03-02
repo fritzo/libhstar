@@ -1,10 +1,14 @@
 set(HSTAR_LIBS
-	hstar_util
+	hstar
 	# crypto ssl
 )
-add_executable(hstar_main
-	hstar_main.c
+
+add_library(hstar STATIC
+	engine.c
 )
 
-# add_subdirectory(third_party)
-# add_subdirectory(util)
+add_executable(hstar_cli
+	cli.c
+)
+
+target_link_libraries(hstar_cli ${HSTAR_LIBS})

@@ -1,6 +1,7 @@
 build/
 data/
 *.egg-info/
+*.eggs
 *.pyo
 *.pyc
 

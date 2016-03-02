@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 
 /* Ob is a 1-based pointer type; 0 denotes null. */
 typedef uint32_t Ob;

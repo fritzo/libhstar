@@ -1,5 +1,6 @@
 #include "engine.h"
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,16 +16,20 @@
 #define unlikely(x) (x)
 #endif  // __GNUG__
 
-#define UN_ERROR(...)               \
-  {                                 \
-    fprintf(stderr, ##__VA_ARGS__); \
-    fflush(stderr);                 \
-    abort();                        \
+#if __STDC_VERSION__ < 201112L
+#define static_assert(cond, message)
+#endif  // __STDC_VERSION__ < 201112L
+
+#define UN_ERROR(...)             \
+  {                               \
+    fprintf(stderr, __VA_ARGS__); \
+    fflush(stderr);               \
+    abort();                      \
   }
-#define UN_WARN(...)                \
-  {                                 \
-    fprintf(stderr, ##__VA_ARGS__); \
-    fflush(stderr);                 \
+#define UN_WARN(...)              \
+  {                               \
+    fprintf(stderr, __VA_ARGS__); \
+    fflush(stderr);               \
   }
 
 #define TODO(...) UN_ERROR("TODO "##__VA_ARGS__)
@@ -33,10 +38,10 @@
 #define UN_ASSERT(cond, ...)
 #else  // NDEBUG
 #define UN_ASSERT(cond, ...) \
-  { if (unlikely(!(cond)) UN_ERROR( ##__VA_ARGS__ ) }
+  { if (unlikely(!(cond)) UN_ERROR( ##__VA_ARGS__ ); }
 #endif  // NDEBUG
 
-#define UN_ASSERT_TRUE(cond) UN_ASSERT(cond, "failed assertion: " #cond)
+#define UN_ASSERT_TRUE(cond) UN_ASSERT((cond), "failed assertion: " #cond)
 #define UN_ASSERT_OP(x, op, y)                                               \
   UN_ASSERT((x)op(y), "expected " #x " " #op " " #y "; actual %ull vs %ull", \
             (x), (y))
@@ -74,7 +79,7 @@ typedef struct {
   Ob lhs;
   Ob rhs;
 } ObPair;
-_Static_assert(sizeof(ObPair) == 8, "OpPair has wrong size");
+static_assert(sizeof(ObPair) == 8, "OpPair has wrong size");
 
 typedef union {
   Ob ob;
@@ -84,9 +89,11 @@ typedef union {
   uint32_t uint32s[2];
   uint64_t uint64s[1];
 } Word;
-_Static_assert(sizeof(Word) == 8, "Word has wrong size");
+static_assert(sizeof(Word) == 8, "Word has wrong size");
 
-inline uint64_t Word_hash(const Word* word) { return hash_64(word->num); }
+inline uint64_t Word_hash(Word word) {
+  return hash_64(word.uint64s[0]);
+}
 
 typedef union {
   Word key;
@@ -95,7 +102,7 @@ typedef union {
   uint32_t uint32s[4];
   uint64_t uint64s[2];
 } Hash_Node;
-_Static_assert(sizeof(Hash_Node) == 16, "Hash_Node has wrong size");
+static_assert(sizeof(Hash_Node) == 16, "Hash_Node has wrong size");
 
 inline uint64_t Hash_Node_hash(const Hash_Node* node) {
   return hash_64(*(uint64_t*)node);
@@ -112,13 +119,13 @@ static void Hash_validate(const Hash* hash) {
   UN_ASSERT_TRUE(is_power_of_2(hash->size));
   UN_ASSERT_LT(hash->count, hash->size);
   UN_ASSERT_EQ(hash->mask, hash->size - 1UL);
-  UN_ASSERT_TRUE(hash->nodes)
+  UN_ASSERT_TRUE(hash->nodes);
 }
 
 static Info Hash_init(Hash* hash, size_t size) {
   if (unlikely(!is_power_of_2(size))) {
     fprintf(stderr, "expected size a power of 2, actual %lu", size);
-    return info;
+    return 1;
   }
   const size_t bytes = sizeof(Hash_Node) * size;
   Info info = posix_memalign(&(hash->nodes), UN_TUNE_CACHE_LINE_BYTES, bytes);
@@ -139,7 +146,7 @@ static Info Hash_grow(Hash* hash) {
   Hash grown;
   Info info = Hash_init(&grown, hash->size * 2UL);
   if (unlikely(info)) return info;
-  for (Hash_Node* node = hash->nodes, *end = node + hash->size; ++node) {
+  for (Hash_Node *node = hash->nodes, *end = node + hash->size; node != end; ++node) {
     if (node->key.uint64s[0]) {
       Hash_insert_nogrow(&grown, node);
     }
@@ -150,7 +157,7 @@ static Info Hash_grow(Hash* hash) {
 }
 
 inline uint64_t Hash_bucket(const Hash* hash, Word key) {
-  return ObPair_hash(key) & hash->mask & 0xFFFFFFFCUL;
+  return Word_hash(key) & hash->mask & 0xFFFFFFFCUL;
 }
 
 // Returns pointer if found, else NULL.
@@ -162,7 +169,7 @@ static Hash_Node* Hash_find(const Hash* hash, Word key) {
   while (key.uint64s[0] != node->uint64s[0]) {
     if (!(node->uint64[0])) return NULL;
     pos = (pos + 1UL) & hash->mask;
-    node = hash->val[pos];
+    node = hash->nodes + pos;
   }
   return node;
 }
@@ -187,12 +194,18 @@ inline Hash_Node* Hash_insert_nogrow(Hash* hash, const Hash_Node* node_to_insert
   while (node->uint64s[0]) {
     UN_ASSERT_NE(node->uint64s[0], node_to_insert->uint64s[0]);
     pos = (pos + 1UL) & hash->mask;
-    node = hash->val[pos];
+    node = hash->nodes + pos;
   }
   memcpy(node, node_to_insert, sizeof(Hash_Node));
   ++(hash->count);
   return node;
 }
+
+// ---------------------------------------------------------------------------
+// Inverse Hash
+typedef struct {
+  // TODO
+} InverseHash;
 
 // ---------------------------------------------------------------------------
 // Structure

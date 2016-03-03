@@ -26,27 +26,29 @@
 #define DEBUG 1
 #endif  // NDEBUG
 
-#define UN_ERROR(...)                 \
-    {                                 \
-        fprintf(stderr, __VA_ARGS__); \
-        fflush(stderr);               \
-        abort();                      \
+#define UN_ERROR(...)                          \
+    {                                          \
+        fprintf(stderr, "ERROR " __VA_ARGS__); \
+        fflush(stderr);                        \
+        abort();                               \
     }
-#define UN_WARN(...)                  \
-    {                                 \
-        fprintf(stderr, __VA_ARGS__); \
-        fflush(stderr);               \
+#define UN_WARN(...)                             \
+    {                                            \
+        fprintf(stderr, "WARNING " __VA_ARGS__); \
+        fflush(stderr);                          \
     }
 
 #define TODO(...) UN_ERROR("TODO " __VA_ARGS__)
 
-#ifdef NDEBUG
-#define UN_ASSERT(cond, ...)
-#else  // NDEBUG
-#define UN_ASSERT(cond, ...)                         \
+#define UN_CHECK(cond, ...)                          \
     {                                                \
         if (unlikely(!(cond))) UN_ERROR(__VA_ARGS__) \
     }
+
+#ifdef NDEBUG
+#define UN_ASSERT(cond, ...)
+#else  // NDEBUG
+#define UN_ASSERT UN_CHECK
 #endif  // NDEBUG
 
 #define UN_ASSERT_TRUE(cond) UN_ASSERT((cond), "failed assertion: " #cond)
@@ -58,11 +60,31 @@
 #define UN_ASSERT_LT(x, y) UN_ASSERT_OP(x, <, y)
 #define UN_ASSERT_LE(x, y) UN_ASSERT_OP(x, <=, y)
 
-#define UN_TUNE_CACHE_LINE_BYTES (64UL)
+#define UN_CACHE_LINE_BYTES (64UL)
+#define UN_INIT_CAPACITY (1024U)
+
+static inline void *malloc_or_die(size_t size) {
+    void *ptr = malloc(size);
+    UN_CHECK(ptr, "out of memory, size = %lu", size);
+    return ptr;
+}
+
+static inline void *realloc_or_die(void *ptr, size_t size) {
+    ptr = realloc(ptr, size);
+    UN_CHECK(ptr, "out of memory, size = %lu", size);
+    return ptr;
+}
+
+static inline void *memalign_or_die(size_t alignment, size_t size) {
+    void *ptr;
+    int info = posix_memalign(&ptr, alignment, size);
+    UN_CHECK(info == 0, "out of memory, size = %lu", size);
+    return ptr;
+}
 
 // Adapted from
 // https://github.com/google/farmhash/blob/master/src/farmhash.h#L167
-inline uint64_t hash_64(uint64_t key) {
+static inline uint64_t hash_64(uint64_t key) {
     // Murmur-inspired hashing.
     const uint64_t kMul = 0x9ddfea08eb382d69ULL;
     uint64_t b = key * kMul;
@@ -73,12 +95,141 @@ inline uint64_t hash_64(uint64_t key) {
     return b;
 }
 
-inline bool is_power_of_2(uint64_t x) {
+static inline bool is_power_of_2(uint64_t x) {
     return ((x != 0UL) && !(x & (x - 1UL)));
 }
 
-typedef int Info;
-static const Info Info_success = 0;
+// ---------------------------------------------------------------------------
+// Signature
+
+#define UN_TOP 1U
+#define UN_BOT 2U
+#define UN_I 3U
+#define UN_K 4U
+#define UN_B 5U
+#define UN_C 6U
+#define UN_S 7U
+#define UN_VARS_BEGIN 8U
+#define UN_VARS_END (UN_VARS_BEGIN + 32U)
+
+static inline bool is_var(Ob ob) {
+    return UN_VARS_BEGIN <= ob && ob < UN_VARS_END;
+}
+
+// ---------------------------------------------------------------------------
+// AbsList
+
+typedef struct {
+    Ob key;
+    Ob val;
+} AbsList_Node;
+
+// zero is valid and initialized.
+typedef struct {
+    AbsList_Node *nodes;
+    size_t size;
+} AbsList;
+
+static inline void AbsList_init(AbsList *list, size_t size) {
+    UN_ASSERT_TRUE(list->nodes == NULL);
+    UN_ASSERT_TRUE(list->size == 0UL);
+    list->nodes = malloc_or_die(size * sizeof(AbsList_Node));
+    list->size = size;
+}
+
+static inline void AbsList_clear(AbsList *list) {
+    free(list->nodes);
+    bzero(list, sizeof(AbsList));
+}
+
+// ---------------------------------------------------------------------------
+// Carrier
+
+typedef struct {
+    Ob obs[2];  // Either {next} if free or {lhs, rhs} if allocated.
+    AbsList abs;
+} Carrier_Node;
+
+typedef struct {
+    Carrier_Node *nodes;
+    Ob free_range;
+    Ob free_list;
+    Ob capacity;
+} Carrier;
+
+static void Carrier_init(Carrier *carrier, size_t capacity) {
+    carrier->free_range = 1U;
+    carrier->free_list = 0U;
+    carrier->capacity = capacity - 1;  // Position 0 is disallowed.
+    carrier->nodes = malloc_or_die(capacity * sizeof(Ob));
+}
+
+static Ob Carrier_alloc(Carrier *carrier) {
+    // Check for recycled obs.
+    {
+        Ob ob = carrier->free_list;
+        if (ob) {
+            carrier->free_list = carrier->nodes[ob].obs[0];
+            carrier->nodes[ob].obs[0] = 0;
+            return ob;
+        }
+    }
+    // Maybe allocate more space.
+    if (unlikely(carrier->free_range == carrier->capacity)) {
+        carrier->capacity *= 2UL;
+        carrier->nodes = realloc_or_die(carrier->nodes, carrier->capacity);
+        bzero(carrier->nodes + carrier->free_range,
+              carrier->free_range * sizeof(Ob));
+    }
+    return carrier->free_range++;
+}
+
+static void Carrier_free(Carrier *carrier, Ob ob) {
+    UN_ASSERT_TRUE(0U < ob);
+    UN_ASSERT_TRUE(ob < carrier->free_range);
+    Carrier_Node *node = carrier->nodes + ob;
+    AbsList_clear(&node->abs);
+    bzero(node, sizeof(Carrier_Node));
+    node->obs[0] = carrier->free_list;
+    carrier->free_list = ob;
+}
+
+static void Carrier_test(unsigned int seed) {
+    srand(seed);
+    for (int init_capacity = 1; init_capacity < 10; ++init_capacity) {
+        Carrier carrier;
+        Carrier_init(&carrier, init_capacity);
+        Ob ob;
+        ob = Carrier_alloc(&carrier);
+        UN_ASSERT(ob == 1);
+
+        Carrier_free(&carrier, 1);
+        ob = Carrier_alloc(&carrier);
+        UN_ASSERT(ob == 1);
+        ob = Carrier_alloc(&carrier);
+        UN_ASSERT(ob == 2);
+
+        Carrier_free(&carrier, 1);
+        ob = Carrier_alloc(&carrier);
+        UN_ASSERT(ob == 1);
+        ob = Carrier_alloc(&carrier);
+        UN_ASSERT(ob == 3);
+        ob = Carrier_alloc(&carrier);
+        UN_ASSERT(ob == 4);
+
+        Carrier_free(&carrier, 3);
+        Carrier_free(&carrier, 1);
+        Carrier_free(&carrier, 2);
+        ob = Carrier_alloc(&carrier);
+        Carrier_free(&carrier, 2);
+        ob = Carrier_alloc(&carrier);
+        Carrier_free(&carrier, 1);
+        ob = Carrier_alloc(&carrier);
+        Carrier_free(&carrier, 3);
+        ob = Carrier_alloc(&carrier);
+        Carrier_free(&carrier, 5);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Hash
@@ -99,7 +250,7 @@ typedef union {
 } Word;
 static_assert(sizeof(Word) == 8, "Word has wrong size");
 
-inline uint64_t Word_hash(Word word) { return hash_64(word.uint64s[0]); }
+static inline uint64_t Word_hash(Word word) { return hash_64(word.uint64s[0]); }
 
 typedef union {
     Word key;
@@ -110,7 +261,7 @@ typedef union {
 } Hash_Node;
 static_assert(sizeof(Hash_Node) == 16, "Hash_Node has wrong size");
 
-inline uint64_t Hash_Node_hash(const Hash_Node *node) {
+static inline uint64_t Hash_Node_hash(const Hash_Node *node) {
     return hash_64(node->uint64s[0]);
 }
 
@@ -128,33 +279,24 @@ static void Hash_validate(const Hash *hash) {
     UN_ASSERT_TRUE(hash->nodes);
 }
 
-static Info Hash_init(Hash *hash, size_t size) {
-    if (unlikely(!is_power_of_2(size))) {
-        fprintf(stderr, "expected size a power of 2, actual %lu", size);
-        return 1;
-    }
+static void Hash_init(Hash *hash, size_t size) {
+    UN_CHECK(is_power_of_2(size), "expected size a power of 2, actual %lu",
+             size);
     const size_t bytes = sizeof(Hash_Node) * size;
-    Info info = posix_memalign((void **)&(hash->nodes),
-                               UN_TUNE_CACHE_LINE_BYTES, bytes);
-    if (unlikely(info)) {
-        fprintf(stderr, "posix_memalign failed");
-        return info;
-    }
+    hash->nodes = memalign_or_die(UN_CACHE_LINE_BYTES, bytes);
     bzero(hash->nodes, bytes);
     hash->mask = size - 1UL;
     hash->count = 0;
     hash->size = size;
     if (DEBUG) Hash_validate(hash);
-    return Info_success;
 }
 
-inline Hash_Node *Hash_insert_nogrow(Hash *hash,
-                                     const Hash_Node *node_to_insert);
+static inline Hash_Node *Hash_insert_nogrow(Hash *hash,
+                                            const Hash_Node *node_to_insert);
 
-static Info Hash_grow(Hash *hash) {
+static void Hash_grow(Hash *hash) {
     Hash grown;
-    Info info = Hash_init(&grown, hash->size * 2UL);
-    if (unlikely(info)) return info;
+    Hash_init(&grown, hash->size * 2UL);
     for (Hash_Node *node = hash->nodes, *end = node + hash->size; node != end;
          ++node) {
         if (node->key.uint64s[0]) {
@@ -163,10 +305,9 @@ static Info Hash_grow(Hash *hash) {
     }
     free(hash->nodes);
     memcpy(hash, &grown, sizeof(Hash));
-    return Info_success;
 }
 
-inline uint64_t Hash_bucket(const Hash *hash, Word key) {
+static inline uint64_t Hash_bucket(const Hash *hash, Word key) {
     return Word_hash(key) & hash->mask & 0xFFFFFFFCUL;
 }
 
@@ -183,20 +324,16 @@ static Hash_Node *Hash_find(const Hash *hash, Word key) {
     return node;
 }
 
-// Returns pointer on success, else NULL.
 static Hash_Node *Hash_insert(Hash *hash, const Hash_Node *node) {
     if (unlikely(hash->count * 2UL == hash->size)) {
-        Info info = Hash_grow(hash);
-        if (unlikely(info)) {
-            return NULL;
-        }
+        Hash_grow(hash);
     }
     return Hash_insert_nogrow(hash, node);
 }
 
 // Returns pointer to inserted node. Assumes node is not already inserted.
-inline Hash_Node *Hash_insert_nogrow(Hash *hash,
-                                     const Hash_Node *node_to_insert) {
+static inline Hash_Node *Hash_insert_nogrow(Hash *hash,
+                                            const Hash_Node *node_to_insert) {
     uint64_t pos = Hash_bucket(hash, node_to_insert->key);
     Hash_Node *node = hash->nodes + pos;
     UN_ASSERT_LT(hash->count, hash->size);  // Required for termination.
@@ -230,6 +367,8 @@ typedef struct {
 // - pending : ReprioritizableQueue Ob
 
 typedef struct {
+    Carrier carrier;
+
     Hash hash;  // A shared associative array.
 
     InverseHash app_Lrv;
@@ -239,13 +378,43 @@ typedef struct {
     Hash abs_LRv;
 } Structure;
 
-Info Structure_init(Structure *structure, size_t size) {
-    Info info = Hash_init(&structure->hash, size);
-    if (unlikely(info)) return info;
+void Structure_init(Structure *structure) {
+    Carrier_init(&structure->carrier, UN_INIT_CAPACITY);
+    Hash_init(&structure->hash, UN_INIT_CAPACITY);
+
+    // Init constants.
+    Ob ob;
+    ob = Carrier_alloc(&structure->carrier);
+    UN_CHECK(ob == UN_TOP);
+    ob = Carrier_alloc(&structure->carrier);
+    UN_CHECK(ob == UN_BOT);
+    ob = Carrier_alloc(&structure->carrier);
+    UN_CHECK(ob == UN_I);
+    ob = Carrier_alloc(&structure->carrier);
+    UN_CHECK(ob == UN_K);
+    ob = Carrier_alloc(&structure->carrier);
+    UN_CHECK(ob == UN_B);
+    ob = Carrier_alloc(&structure->carrier);
+    UN_CHECK(ob == UN_C);
+    ob = Carrier_alloc(&structure->carrier);
+    UN_CHECK(ob == UN_S);
+
+    // Init variables.
+    for (Ob var = UN_VARS_BEGIN; var != UN_VARS_END; ++var) {
+        ob = Carrier_alloc(&structure->carrier);
+        UN_CHECK(ob == var);
+        Carrier_Node *node = structure->carrier.nodes + ob;
+
+        // Set \x.x = I.
+        AbsList_init(&node->abs, 1);
+        node->abs.nodes[0].key = var;
+        node->abs.nodes[0].val = UN_I;
+    }
+
     TODO("init other structure");
 }
 
-void Structure_validate(const Structure * structure) {
+void Structure_validate(const Structure *structure) {
     Hash_validate(&structure->hash);
 }
 
@@ -253,7 +422,43 @@ void Structure_validate(const Structure * structure) {
 static Structure g_structure;
 
 // ---------------------------------------------------------------------------
+// ObStack
+
+typedef struct {
+    Ob *data;
+    uint32_t size;
+    uint32_t capacity;
+} ObStack;
+
+static inline void ObStack_init(ObStack *stack) {
+    size_t bytes = UN_CACHE_LINE_BYTES;
+    stack->data = malloc_or_die(bytes);
+    stack->size = 0;
+    stack->capacity = bytes / sizeof(Ob);
+}
+
+static inline void ObStack_delete(ObStack *stack) { free(stack->data); }
+
+static inline void ObStack_push(ObStack *stack, Ob ob) {
+    if (unlikely(stack->size == stack->capacity)) {
+        stack->capacity *= 2UL;
+        UN_CHECK(stack->capacity, "stack is too large");
+        stack->data = realloc_or_die(stack->data, stack->capacity);
+    }
+    stack->data[stack->size++] = ob;
+}
+
+static inline Ob ObStack_try_pop(ObStack *stack) {
+    return stack->size ? stack->data[--stack->size] : 0U;
+}
+
+// ---------------------------------------------------------------------------
 // Reduction algorithms
+
+static inline Hash_Node *find_app(Ob lhs, Ob rhs) {
+    Word key = {.uint32s = {lhs, rhs}};
+    return Hash_find(&g_structure.hash, key);
+}
 
 static Ob make_app(Ob lhs, Ob rhs) {
     UN_ASSERT_TRUE(lhs);
@@ -261,63 +466,113 @@ static Ob make_app(Ob lhs, Ob rhs) {
     TODO("")
 }
 
+static Ob simplify(Ob ob);
+
 static Ob simplify_app(Ob lhs, Ob rhs) {
     UN_ASSERT_TRUE(lhs);
     UN_ASSERT_TRUE(rhs);
-    Hash_Node node_to_insert;
-    node_to_insert.key.uint32s[0] = lhs;
-    node_to_insert.key.uint32s[1] = rhs;
+
+    // First check cache.
     {
-        const Hash_Node* node =
-            Hash_find(&g_structure.hash, node_to_insert.key);
+        const Hash_Node *node = find_app(lhs, rhs);
         if (node) return node - g_structure.hash.nodes;
     }
+
+    // Linearly beta-eta reduce.
+    Ob head = lhs;
+    {
+        ObStack args;
+        ObStack_init(&args);
+        ObStack_push(&args, rhs);
+        while (!is_var(head)) {
+            const Carrier_Node *head_node = g_structure.carrier.nodes + head;
+            while (head_node->obs[0] && head_node->obs[1]) {
+                head = head_node->obs[0];
+                ObStack_push(&args, head_node->obs[1]);
+                head_node = g_structure.carrier.nodes + head;
+            }
+            switch (head) {
+                case UN_I:
+                    TODO("reduce");
+                    break;
+                default:
+                    UN_ERROR("uidentified ob: %u", head);
+            }
+        }
+
+        // Simpilfy args.
+        Ob arg;
+        while ((arg = ObStack_try_pop(&args))) {
+            arg = simplify(arg);
+            head = make_app(head, arg);
+        }
+        ObStack_delete(&args);
+    }
+
+    // Abstract variables.
     TODO("implement");
-    const Hash_Node* node = Hash_insert(&g_structure.hash, &node_to_insert);
+
+    // Save value.
+    Hash_Node node_to_insert = {.uint32s = {lhs, rhs}};
+    const Hash_Node *node = Hash_insert(&g_structure.hash, &node_to_insert);
     if (unlikely(!node)) return 0;
     return node - g_structure.hash.nodes;
 }
 
-static Ob compute_app(Ob lhs, Ob rhs, int budget) {
-    if (unlikely(!budget)) return simplify_app(lhs, rhs);
+static Ob compute_app(Ob lhs, Ob rhs, int *budget) {
+    if (unlikely(!*budget)) return simplify_app(lhs, rhs);
     UN_ASSERT_TRUE(lhs);
     UN_ASSERT_TRUE(rhs);
     TODO("implement");
     return make_app(lhs, rhs);
 }
 
-// ---------------------------------------------------------------------------
+static Ob simplify(Ob ob) {
+    const Ob lhs = g_structure.carrier.nodes[ob].obs[0];
+    const Ob rhs = g_structure.carrier.nodes[ob].obs[0];
+    return (lhs && rhs) ? simplify_app(lhs, rhs) : ob;
+}
+
+static Ob compute(Ob ob, int *budget) {
+    const Ob lhs = g_structure.carrier.nodes[ob].obs[0];
+    const Ob rhs = g_structure.carrier.nodes[ob].obs[0];
+    return (lhs && rhs) ? compute_app(lhs, rhs, budget) : ob;
+}
+
+// -----------------------------------------------------------------------
 // Interface
 
 // Returns 0 on success.
-int un_init(size_t size) {
-    Info info = Structure_init(&g_structure, size);
-    if (unlikely(info)) return info;
-    return Info_success;
+void un_init() {
+    static bool initialized = false;
+    if (unlikely(!initialized)) {
+        Structure_init(&g_structure);
+        initialized = true;
+    }
+}
+
+Ob un_simplify(Ob ob) {
+    UN_CHECK(ob, "ob is null");
+    return simplify(ob);
 }
 
 Ob un_simplify_app(Ob lhs, Ob rhs) {
-    if (unlikely(!lhs)) {
-        UN_WARN("lhs is null");
-        return 0U;
-    }
-    if (unlikely(!rhs)) {
-        UN_WARN("rhs is null");
-        return 0U;
-    }
-
+    UN_CHECK(lhs, "lhs is null");
+    UN_CHECK(rhs, "rhs is null");
     return simplify_app(lhs, rhs);
 }
 
-Ob un_compute_app(Ob lhs, Ob rhs, int budget) {
-    if (unlikely(!lhs)) {
-        UN_WARN("lhs is null");
-        return 0U;
-    }
-    if (unlikely(!rhs)) {
-        UN_WARN("rhs is null");
-        return 0U;
-    }
+Ob un_compute(Ob ob, int *budget) {
+    UN_CHECK(ob, "ob is null");
+    UN_CHECK(budget, "budget is null");
+    return compute(ob, budget);
+}
 
+Ob un_compute_app(Ob lhs, Ob rhs, int *budget) {
+    UN_CHECK(lhs, "lhs is null");
+    UN_CHECK(rhs, "rhs is null");
+    UN_CHECK(budget, "budget is null");
     return compute_app(lhs, rhs, budget);
 }
+
+void un_test(unsigned int seed) { Carrier_test(seed); }

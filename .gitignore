@@ -4,6 +4,7 @@ data/
 *.eggs
 *.pyo
 *.pyc
+.idea/
 
 # Object files
 *.o

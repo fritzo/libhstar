@@ -1,2 +1,3 @@
-# skjmachine
-Pure untyped non-deterministic combinator machine
+# libhstar
+
+Pure untyped extensional non-deterministic memoized combinator machine.

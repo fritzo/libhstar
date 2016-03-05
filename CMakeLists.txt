@@ -3,6 +3,7 @@ project(libhstar)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -g -std=c11")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpedantic")  # TODO
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wundef -Wpointer-arith -Wcast-qual -Wcast-align -Wno-deprecated")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -fomit-frame-pointer -pipe")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")

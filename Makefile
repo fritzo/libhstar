@@ -44,6 +44,6 @@ test: all FORCE
 
 clean: FORCE
 	rm -rf build lib
-	git clean -fdx -e hstar.egg-info -e node_modules -e data
+	git clean -fdx -e hstar.egg-info -e .idea
 
 FORCE:

@@ -7,24 +7,26 @@
 #include <string.h>
 #include <strings.h>
 
-#ifdef __GNUC__
-#define likely(x) __builtin_expect(!!(x), true)
-#define unlikely(x) __builtin_expect(!!(x), false)
-#else  // __GNUC__
-#warning "ignoring likely(-), unlikely(-)"
-#define likely(x) (x)
-#define unlikely(x) (x)
-#endif  // __GNUC__
-
 #if __STDC_VERSION__ < 201112L
 #define static_assert(cond, message)
 #endif  // __STDC_VERSION__ < 201112L
+
+#if defined(__GNUC__) || defined(__clang__)
+#define likely(x) __builtin_expect(!!(x), true)
+#define unlikely(x) __builtin_expect(!!(x), false)
+#else  // defined(__GNUC__) || defined(__clang__)
+#warning "ignoring likely(-), unlikely(-)"
+#define likely(x) (x)
+#define unlikely(x) (x)
+#endif  // defined(__GNUC__) || defined(__clang__)
 
 #ifdef NDEBUG
 #define DEBUG 0
 #else  // NDEBUG
 #define DEBUG 1
 #endif  // NDEBUG
+
+#define UN_UNUSED(x) ((void)(x))
 
 #define UN_ERROR(...)                          \
     {                                          \
@@ -46,19 +48,30 @@
     }
 
 #ifdef NDEBUG
-#define UN_ASSERT(cond, ...)
+#define UN_DCHECK(...)
 #else  // NDEBUG
-#define UN_ASSERT UN_CHECK
+#define UN_DCHECK UN_CHECK
 #endif  // NDEBUG
 
-#define UN_ASSERT_TRUE(cond) UN_ASSERT((cond), "failed assertion: " #cond)
-#define UN_ASSERT_OP(x, op, y)                                               \
-    UN_ASSERT((x)op(y), "expected " #x " " #op " " #y "; actual %lu vs %lu", \
-              (x), (y))
-#define UN_ASSERT_NE(x, y) UN_ASSERT_OP(x, !=, y)
-#define UN_ASSERT_EQ(x, y) UN_ASSERT_OP(x, ==, y)
-#define UN_ASSERT_LT(x, y) UN_ASSERT_OP(x, <, y)
-#define UN_ASSERT_LE(x, y) UN_ASSERT_OP(x, <=, y)
+#define UN_CHECK_TRUE(cond) UN_CHECK((cond), "failed assertion: " #cond)
+#define UN_CHECK_OP(x, op, y, fmt)                                            \
+    UN_CHECK((x)op(y),                                                        \
+              "expected " #x " " #op " " #y "; actual %" fmt " vs %" fmt, (x), \
+              (y))
+#define UN_CHECK_NE(x, y, fmt) UN_CHECK_OP(x, !=, y, fmt)
+#define UN_CHECK_EQ(x, y, fmt) UN_CHECK_OP(x, ==, y, fmt)
+#define UN_CHECK_LT(x, y, fmt) UN_CHECK_OP(x, <, y, fmt)
+#define UN_CHECK_LE(x, y, fmt) UN_CHECK_OP(x, <=, y, fmt)
+
+#define UN_DCHECK_TRUE(cond) UN_DCHECK((cond), "failed assertion: " #cond)
+#define UN_DCHECK_OP(x, op, y, fmt)                                            \
+    UN_DCHECK((x)op(y),                                                        \
+              "expected " #x " " #op " " #y "; actual %" fmt " vs %" fmt, (x), \
+              (y))
+#define UN_DCHECK_NE(x, y, fmt) UN_DCHECK_OP(x, !=, y, fmt)
+#define UN_DCHECK_EQ(x, y, fmt) UN_DCHECK_OP(x, ==, y, fmt)
+#define UN_DCHECK_LT(x, y, fmt) UN_DCHECK_OP(x, <, y, fmt)
+#define UN_DCHECK_LE(x, y, fmt) UN_DCHECK_OP(x, <=, y, fmt)
 
 #define UN_CACHE_LINE_BYTES (64UL)
 #define UN_INIT_CAPACITY (1024U)
@@ -131,8 +144,8 @@ typedef struct {
 } AbsList;
 
 static inline void AbsList_init(AbsList *list, size_t size) {
-    UN_ASSERT_TRUE(list->nodes == NULL);
-    UN_ASSERT_TRUE(list->size == 0UL);
+    UN_DCHECK_TRUE(list->nodes == NULL);
+    UN_DCHECK_TRUE(list->size == 0UL);
     list->nodes = malloc_or_die(size * sizeof(AbsList_Node));
     list->size = size;
 }
@@ -185,8 +198,8 @@ static Ob Carrier_alloc(Carrier *carrier) {
 }
 
 static void Carrier_free(Carrier *carrier, Ob ob) {
-    UN_ASSERT_TRUE(0U < ob);
-    UN_ASSERT_TRUE(ob < carrier->free_range);
+    UN_DCHECK_TRUE(0U < ob);
+    UN_DCHECK_TRUE(ob < carrier->free_range);
     Carrier_Node *node = carrier->nodes + ob;
     AbsList_clear(&node->abs);
     bzero(node, sizeof(Carrier_Node));
@@ -201,21 +214,21 @@ static void Carrier_test(unsigned int seed) {
         Carrier_init(&carrier, init_capacity);
         Ob ob;
         ob = Carrier_alloc(&carrier);
-        UN_ASSERT(ob == 1);
+        UN_DCHECK(ob == 1);
 
         Carrier_free(&carrier, 1);
         ob = Carrier_alloc(&carrier);
-        UN_ASSERT(ob == 1);
+        UN_DCHECK(ob == 1);
         ob = Carrier_alloc(&carrier);
-        UN_ASSERT(ob == 2);
+        UN_DCHECK(ob == 2);
 
         Carrier_free(&carrier, 1);
         ob = Carrier_alloc(&carrier);
-        UN_ASSERT(ob == 1);
+        UN_DCHECK(ob == 1);
         ob = Carrier_alloc(&carrier);
-        UN_ASSERT(ob == 3);
+        UN_DCHECK(ob == 3);
         ob = Carrier_alloc(&carrier);
-        UN_ASSERT(ob == 4);
+        UN_DCHECK(ob == 4);
 
         Carrier_free(&carrier, 3);
         Carrier_free(&carrier, 1);
@@ -261,10 +274,6 @@ typedef union {
 } Hash_Node;
 static_assert(sizeof(Hash_Node) == 16, "Hash_Node has wrong size");
 
-static inline uint64_t Hash_Node_hash(const Hash_Node *node) {
-    return hash_64(node->uint64s[0]);
-}
-
 typedef struct {
     Hash_Node *nodes;
     size_t mask;
@@ -273,10 +282,10 @@ typedef struct {
 } Hash;
 
 static void Hash_validate(const Hash *hash) {
-    UN_ASSERT_TRUE(is_power_of_2(hash->size));
-    UN_ASSERT_LT(hash->count, hash->size);
-    UN_ASSERT_EQ(hash->mask, hash->size - 1UL);
-    UN_ASSERT_TRUE(hash->nodes);
+    UN_CHECK_TRUE(is_power_of_2(hash->size));
+    UN_CHECK_LT(hash->count, hash->size, "lu")
+    UN_CHECK_EQ(hash->mask, hash->size - 1UL, "lu")
+    UN_CHECK_TRUE(hash->nodes);
 }
 
 static void Hash_init(Hash *hash, size_t size) {
@@ -315,7 +324,7 @@ static inline uint64_t Hash_bucket(const Hash *hash, Word key) {
 static Hash_Node *Hash_find(const Hash *hash, Word key) {
     uint64_t pos = Hash_bucket(hash, key);
     Hash_Node *node = hash->nodes + pos;
-    UN_ASSERT_LT(hash->count, hash->size);  // Required for termination.
+    UN_DCHECK_LT(hash->count, hash->size, "lu")  // Required for termination.
     while (key.uint64s[0] != node->uint64s[0]) {
         if (!(node->uint64s[0])) return NULL;
         pos = (pos + 1UL) & hash->mask;
@@ -336,9 +345,9 @@ static inline Hash_Node *Hash_insert_nogrow(Hash *hash,
                                             const Hash_Node *node_to_insert) {
     uint64_t pos = Hash_bucket(hash, node_to_insert->key);
     Hash_Node *node = hash->nodes + pos;
-    UN_ASSERT_LT(hash->count, hash->size);  // Required for termination.
+    UN_DCHECK_LT(hash->count, hash->size, "lu")  // Required for termination.
     while (node->uint64s[0]) {
-        UN_ASSERT_NE(node->uint64s[0], node_to_insert->uint64s[0]);
+        UN_DCHECK_NE(node->uint64s[0], node_to_insert->uint64s[0], "llu")
         pos = (pos + 1UL) & hash->mask;
         node = hash->nodes + pos;
     }
@@ -461,16 +470,18 @@ static inline Hash_Node *find_app(Ob lhs, Ob rhs) {
 }
 
 static Ob make_app(Ob lhs, Ob rhs) {
-    UN_ASSERT_TRUE(lhs);
-    UN_ASSERT_TRUE(rhs);
+    UN_DCHECK_TRUE(lhs);
+    UN_DCHECK_TRUE(rhs);
+    UN_UNUSED(lhs);
+    UN_UNUSED(rhs);
     TODO("")
 }
 
 static Ob simplify(Ob ob);
 
 static Ob simplify_app(Ob lhs, Ob rhs) {
-    UN_ASSERT_TRUE(lhs);
-    UN_ASSERT_TRUE(rhs);
+    UN_DCHECK_TRUE(lhs);
+    UN_DCHECK_TRUE(rhs);
 
     // First check cache.
     {
@@ -521,8 +532,8 @@ static Ob simplify_app(Ob lhs, Ob rhs) {
 
 static Ob compute_app(Ob lhs, Ob rhs, int *budget) {
     if (unlikely(!*budget)) return simplify_app(lhs, rhs);
-    UN_ASSERT_TRUE(lhs);
-    UN_ASSERT_TRUE(rhs);
+    UN_DCHECK_TRUE(lhs);
+    UN_DCHECK_TRUE(rhs);
     TODO("implement");
     return make_app(lhs, rhs);
 }

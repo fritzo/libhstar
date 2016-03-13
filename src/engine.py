@@ -12,6 +12,19 @@ _consts = {}
 _pending = set()
 
 
+def validate():
+    for key, val in _terms.iteritems():
+        assert val in _terms
+        if key is not val:
+            assert key != val
+            assert key not in _pending
+    for key, val in _consts.iteritems():
+        assert val in _terms
+        assert val not in _pending
+    for term in _pending:
+        assert term in _terms
+
+
 def create_const(name):
     name = intern(name)
     term = name,
@@ -55,6 +68,9 @@ def reset():
     # Add some equations.
     sii = make_app(make_app(S, I, pending=False), I, pending=False)
     _terms[_APP, sii, sii] = BOT
+
+    if __debug__:
+        validate()
 
 
 # ----------------------------------------------------------------------------
@@ -151,7 +167,13 @@ def app(lhs, rhs, budget=[0]):
             _pending.discard(head)
 
     # Memoize result.
-    _terms[_APP, lhs, rhs] = head
+    term = make_app(lhs, rhs, pending=pending)
+    if term is not head:
+        _terms[term] = head
+        _pending.discard(term)
+
+    if __debug__:
+        validate()
 
     return head
 

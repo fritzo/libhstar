@@ -7,9 +7,11 @@
 #include <string.h>
 #include <strings.h>
 
-#if __STDC_VERSION__ < 201112L
+// static_assert should be defined in assert.h.
+#if !defined(static_assert)
+#warning "ignoring static_assert(-,-)"
 #define static_assert(cond, message)
-#endif  // __STDC_VERSION__ < 201112L
+#endif  // !defined(static_assert)
 
 #if defined(__GNUC__) || defined(__clang__)
 #define likely(x) __builtin_expect(!!(x), true)
@@ -19,11 +21,6 @@
 #define likely(x) (x)
 #define unlikely(x) (x)
 #endif  // defined(__GNUC__) || defined(__clang__)
-
-#if !defined(static_assert)
-#warning "ignoring static_assert(-,-)"
-#define static_assert(cond, message)
-#endif  // !defined(static_assert)
 
 #ifdef NDEBUG
 #define DEBUG 0

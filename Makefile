@@ -38,8 +38,8 @@ release: FORCE
 	  && $(CMAKE) -DCMAKE_BUILD_TYPE=RelWithDebInfo ../.. \
 	  && $(MAKE)
 
-test: all FORCE
-	HSTAR_DEBUG=1 nosetests -v pomagma
+test: lint all FORCE
+	HSTAR_DEBUG=1 py.test -v hstar
 	@echo '----------------'
 	@echo 'PASSED ALL TESTS'
 

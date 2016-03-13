@@ -1,8 +1,8 @@
 cffi>=1.0.0
-nose
 parsable>=0.2.0
 pep8
 psutil
 pyflakes
 pyformat
+pytest
 simplejson

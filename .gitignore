@@ -5,6 +5,7 @@ data/
 *.pyo
 *.pyc
 .idea/
+.cache/
 
 # Object files
 *.o

@@ -5,6 +5,7 @@
 
 _terms = {}
 _consts = {}
+_pending = set()
 
 
 def create_const(name):
@@ -29,27 +30,31 @@ def is_app(term):
     return term[0] is _APP
 
 
-def create_app(lhs, rhs):
+def make_app(lhs, rhs, pending):
     term = _APP, lhs, rhs
-    assert term not in _terms, term
-    _terms[term] = term
+    term = _terms.setdefault(term, term)
+    if pending:
+        _pending.add(term)
+    else:
+        _pending.discard(term)
     return term
 
 
-def make_app(lhs, rhs):
-    term = _APP, lhs, rhs
-    return _terms.setdefault(term, term)
+def reset():
+    _terms.clear()
+    _pending.clear()
+    for term in _consts.itervalues():
+        _terms[term] = term
 
 
 # ----------------------------------------------------------------------------
 # Reduction
 
-
 def init_budget(value=0):
     return [value]
 
 
-def take_budget(budget):
+def try_consume_budget(budget):
     assert isinstance(budget, list), budget
     assert isinstance(budget[0], int) and budget[0] >= 0, budget
     if budget[0] > 0:
@@ -63,15 +68,24 @@ def app(lhs, rhs, budget=[0]):
     '''
     Eagerly linear-beta reduce.
     '''
-    # First check cache.
+    # First check cache for most-reduced copy.
     try:
-        return _terms[_APP, lhs, rhs]
+        term = _terms[_APP, lhs, rhs]
     except KeyError:
-        pass
+        head = lhs
+        args = [rhs]
+        pending = False
+    else:
+        if term not in _pending:
+            return term
+        assert is_app(term)
+        head = term[1]
+        args = [term[2]]
+        pending = True
 
-    head = lhs
-    args = [rhs]
+    # Head reduce.
     while True:
+        print('DEBUG {} {}'.format(head, args))
         if is_app(head):
             args.append(head[2])
             head = head[1]
@@ -100,7 +114,8 @@ def app(lhs, rhs, budget=[0]):
             z = args.pop()
             head = app(app(x, z), y)
         elif head is S:
-            if len(args) < 3 or not take_budget(budget):
+            if len(args) < 3 or not try_consume_budget(budget):
+                pending = True
                 break
             x = args.pop()
             y = args.pop()
@@ -113,7 +128,13 @@ def app(lhs, rhs, budget=[0]):
     while args:
         arg = args.pop()
         arg = normalize(arg, budget=budget)
-        head = make_app(head, arg)
+        pending = pending or arg in _pending
+        head = make_app(head, arg, pending=pending)
+        if not pending:
+            _pending.discard(head)
+
+    # Memoize result.
+    _terms[_APP, lhs, rhs] = head
 
     return head
 
@@ -127,7 +148,6 @@ def normalize(term, budget=[0]):
 
 # ----------------------------------------------------------------------------
 # Serialization
-
 
 def parse_tokens(tokens):
     head = next(tokens)

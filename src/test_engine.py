@@ -25,22 +25,41 @@ SIMPLIFY_EXAMPLES = [
 ]
 
 
-@pytest.mark.parametrize("string,expected", SIMPLIFY_EXAMPLES)
-def test_simplfy(string, expected):
+@pytest.mark.parametrize('string,expected', SIMPLIFY_EXAMPLES)
+def test_simplfy_pristine_db(string, expected):
+    engine.reset()
     term = engine.parse(string)
+    actual = engine.serialize(term)
+    assert actual == expected
+
+
+@pytest.mark.parametrize('string,expected', SIMPLIFY_EXAMPLES)
+def test_simplfy_dirty_db(string, expected):
+    term = engine.parse(string)
+    actual = engine.serialize(term)
+    assert actual == expected
+
+
+@pytest.mark.parametrize('string,expected', SIMPLIFY_EXAMPLES)
+def test_normalize_zero_budget_pristine_db(string, expected):
+    engine.reset()
+    term = engine.parse(string)
+    term = engine.normalize(term, budget=[0])
     actual = engine.serialize(term)
     assert actual == expected
 
 
 NORMALIZE_EXAMPLES = [
     ('APP APP APP S I K B', 'APP APP APP S I K B', 0),
-    pytest.mark.xfail(('APP APP APP S I K B', 'APP B APP K B', 1)),
-    pytest.mark.xfail(('APP APP APP S I K B', 'APP B APP K B', 2)),
+    ('APP APP APP S I K B', 'APP B APP K B', 1),
+    ('APP APP APP S I K B', 'APP B APP K B', 2),
+    ('APP APP APP S I K B', 'APP APP APP S I K B', 0),
 ]
 
 
-@pytest.mark.parametrize("string,expected,budget", NORMALIZE_EXAMPLES)
-def test_normalize(string, expected, budget):
+@pytest.mark.parametrize('string,expected,budget', NORMALIZE_EXAMPLES)
+def test_normalize_pristine_db(string, expected, budget):
+    engine.reset()
     term = engine.parse(string)
     term = engine.normalize(term, budget=[budget])
     actual = engine.serialize(term)

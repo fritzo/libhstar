@@ -27,18 +27,21 @@ ifdef CXX
 endif
 
 debug: FORCE
-	mkdir -p build/debug
-	cd build/debug \
-	  && $(CMAKE) -DCMAKE_BUILD_TYPE=Debug ../.. \
-	  && $(MAKE)
-
+	test -e build/debug || ( \
+	  mkdir -p build/debug \
+	    && cd build/debug \
+	    && $(CMAKE) -DCMAKE_BUILD_TYPE=Debug ../.. \
+	)
+	$(MAKE) -C build/debug
 release: FORCE
-	mkdir -p build/release
-	cd build/release \
-	  && $(CMAKE) -DCMAKE_BUILD_TYPE=RelWithDebInfo ../.. \
-	  && $(MAKE)
+	test -e build/release || ( \
+	  mkdir -p build/release \
+	    && cd build/release \
+	    && $(CMAKE) -DCMAKE_BUILD_TYPE=RelWithDebInfo ../.. \
+	)
+	$(MAKE) -C build/release
 
-test: lint all FORCE
+test: all FORCE
 	HSTAR_DEBUG=1 py.test -v hstar
 	@echo '----------------'
 	@echo 'PASSED ALL TESTS'

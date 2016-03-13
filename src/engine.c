@@ -20,6 +20,11 @@
 #define unlikely(x) (x)
 #endif  // defined(__GNUC__) || defined(__clang__)
 
+#if !defined(static_assert)
+#warning "ignoring static_assert(-,-)"
+#define static_assert(cond, message)
+#endif  // !defined(static_assert)
+
 #ifdef NDEBUG
 #define DEBUG 0
 #else  // NDEBUG

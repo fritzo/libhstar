@@ -56,8 +56,8 @@
 #define UN_CHECK_TRUE(cond) UN_CHECK((cond), "failed assertion: " #cond)
 #define UN_CHECK_OP(x, op, y, fmt)                                            \
     UN_CHECK((x)op(y),                                                        \
-              "expected " #x " " #op " " #y "; actual %" fmt " vs %" fmt, (x), \
-              (y))
+             "expected " #x " " #op " " #y "; actual %" fmt " vs %" fmt, (x), \
+             (y))
 #define UN_CHECK_NE(x, y, fmt) UN_CHECK_OP(x, !=, y, fmt)
 #define UN_CHECK_EQ(x, y, fmt) UN_CHECK_OP(x, ==, y, fmt)
 #define UN_CHECK_LT(x, y, fmt) UN_CHECK_OP(x, <, y, fmt)

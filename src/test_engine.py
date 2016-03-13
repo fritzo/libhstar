@@ -1,42 +1,47 @@
-import hstar.engine
-import functools
-
-
-def for_each_kwargs(examples):
-
-    def decorator(fun):
-
-        def fun_one(i):
-            fun(**examples[i])
-
-        @functools.wraps(fun)
-        def decorated():
-            for i in xrange(len(examples)):
-                yield fun_one, i
-
-        return decorated
-    return decorator
+from hstar import engine
+import pytest
 
 
 SIMPLIFY_EXAMPLES = [
-    {'string': 'I', 'expected': 'I'},
-    {'string': 'K', 'expected': 'K'},
-    {'string': 'B', 'expected': 'B'},
-    {'string': 'C', 'expected': 'C'},
-    {'string': 'S', 'expected': 'S'},
-    {'string': 'APP I I', 'expected': 'I'},
-    {'string': 'APP I K', 'expected': 'K'},
-    {'string': 'APP K I', 'expected': 'APP K I'},
-    {'string': 'APP K APP I I', 'expected': 'APP K I'},
-    {'string': 'APP APP K B C', 'expected': 'B'},
-    {'string': 'APP B I', 'expected': 'APP B I'},
-    {'string': 'APP APP B I K', 'expected': 'APP APP B I K'},
-    {'string': 'APP APP APP B I K B', 'expected': 'APP K B'},
+    ('I', 'I'),
+    ('K', 'K'),
+    ('B', 'B'),
+    ('C', 'C'),
+    ('S', 'S'),
+    ('APP I I', 'I'),
+    ('APP I K', 'K'),
+    ('APP K I', 'APP K I'),
+    ('APP K APP I I', 'APP K I'),
+    ('APP APP K B C', 'B'),
+    ('APP B I', 'APP B I'),
+    ('APP APP B I K', 'APP APP B I K'),
+    ('APP APP APP B I K B', 'APP K B'),
+    ('APP C I', 'APP C I'),
+    ('APP APP C I K', 'APP APP C I K'),
+    ('APP APP APP C I K B', 'APP B K'),
+    ('APP S I', 'APP S I'),
+    ('APP APP S I K', 'APP APP S I K'),
+    ('APP APP APP S I K B', 'APP APP APP S I K B'),
 ]
 
 
-@for_each_kwargs(SIMPLIFY_EXAMPLES)
+@pytest.mark.parametrize("string,expected", SIMPLIFY_EXAMPLES)
 def test_simplfy(string, expected):
-    term = hstar.engine.parse(string)
-    actual = hstar.engine.serialize(term)
+    term = engine.parse(string)
+    actual = engine.serialize(term)
+    assert actual == expected
+
+
+NORMALIZE_EXAMPLES = [
+    ('APP APP APP S I K B', 'APP APP APP S I K B', 0),
+    pytest.mark.xfail(('APP APP APP S I K B', 'APP B APP K B', 1)),
+    pytest.mark.xfail(('APP APP APP S I K B', 'APP B APP K B', 2)),
+]
+
+
+@pytest.mark.parametrize("string,expected,budget", NORMALIZE_EXAMPLES)
+def test_normalize(string, expected, budget):
+    term = engine.parse(string)
+    term = engine.normalize(term, budget=[budget])
+    actual = engine.serialize(term)
     assert actual == expected

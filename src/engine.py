@@ -1,6 +1,4 @@
-'''
-Python reference implementation of reduction engine.
-'''
+"""Python reference implementation of reduction engine."""
 
 # ----------------------------------------------------------------------------
 # Terms

@@ -59,15 +59,29 @@ def make_app(lhs, rhs, pending):
     return term
 
 
+EQUATIONS = [
+    ('APP APP APP S I I APP APP S I I', 'BOT'),
+]
+
+
+def assume_equal(dep, rep):
+    _terms[dep] = rep
+    _pending.discard(dep)
+
+
 def reset():
     _terms.clear()
     _pending.clear()
     for term in _consts.itervalues():
         _terms[term] = term
 
-    # Add some equations.
-    sii = make_app(make_app(S, I, pending=False), I, pending=False)
-    _terms[_APP, sii, sii] = BOT
+    if __debug__:
+        validate()
+
+    for lhs, rhs in EQUATIONS:
+        lhs = parse(lhs)
+        rhs = parse(rhs)
+        assume_equal(lhs, rhs)
 
     if __debug__:
         validate()

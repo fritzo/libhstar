@@ -13,7 +13,7 @@ lint: FORCE
 format: FORCE
 	pyformat -i $(PY_FILES)
 	clang-format -i $(C_FILES)
-	# TODO use clang-tidy
+	@# TODO use clang-tidy
 
 python: lint FORCE
 	pip install -e .

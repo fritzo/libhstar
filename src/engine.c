@@ -214,21 +214,21 @@ static void Carrier_test(unsigned int seed) {
         Carrier_init(&carrier, init_capacity);
         Ob ob;
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK(ob == 1);
+        UN_DCHECK_EQ(ob, 1U, "u");
 
         Carrier_free(&carrier, 1);
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK(ob == 1);
+        UN_DCHECK_EQ(ob, 1U, "u");
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK(ob == 2);
+        UN_DCHECK_EQ(ob, 2U, "u");
 
         Carrier_free(&carrier, 1);
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK(ob == 1);
+        UN_DCHECK_EQ(ob, 1U, "u");
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK(ob == 3);
+        UN_DCHECK_EQ(ob, 3U, "u");
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK(ob == 4);
+        UN_DCHECK_EQ(ob, 4U, "u");
 
         Carrier_free(&carrier, 3);
         Carrier_free(&carrier, 1);
@@ -358,8 +358,23 @@ static inline Hash_Node *Hash_insert_nogrow(Hash *hash,
 
 // ---------------------------------------------------------------------------
 // Inverse Hash
+
+// TODO
+typedef union {
+    Word key;
+    uint8_t uint8s[16];
+    uint16_t uint16s[8];
+    uint32_t uint32s[4];
+    uint64_t uint64s[2];
+} InverseHash_Node;
+static_assert(sizeof(InverseHash_Node) == 16, "Hash_Node has wrong size");
+
+// TODO
 typedef struct {
-    // TODO
+    InverseHash_Node *nodes;
+    size_t mask;
+    size_t count;
+    size_t size;
 } InverseHash;
 
 // ---------------------------------------------------------------------------
@@ -394,24 +409,24 @@ void Structure_init(Structure *structure) {
     // Init constants.
     Ob ob;
     ob = Carrier_alloc(&structure->carrier);
-    UN_CHECK(ob == UN_TOP);
+    UN_CHECK_EQ(ob, UN_TOP, "u");
     ob = Carrier_alloc(&structure->carrier);
-    UN_CHECK(ob == UN_BOT);
+    UN_CHECK_EQ(ob, UN_BOT, "u");
     ob = Carrier_alloc(&structure->carrier);
-    UN_CHECK(ob == UN_I);
+    UN_CHECK_EQ(ob, UN_I, "u");
     ob = Carrier_alloc(&structure->carrier);
-    UN_CHECK(ob == UN_K);
+    UN_CHECK_EQ(ob, UN_K, "u");
     ob = Carrier_alloc(&structure->carrier);
-    UN_CHECK(ob == UN_B);
+    UN_CHECK_EQ(ob, UN_B, "u");
     ob = Carrier_alloc(&structure->carrier);
-    UN_CHECK(ob == UN_C);
+    UN_CHECK_EQ(ob, UN_C, "u");
     ob = Carrier_alloc(&structure->carrier);
-    UN_CHECK(ob == UN_S);
+    UN_CHECK_EQ(ob, UN_S, "u");
 
     // Init variables.
     for (Ob var = UN_VARS_BEGIN; var != UN_VARS_END; ++var) {
         ob = Carrier_alloc(&structure->carrier);
-        UN_CHECK(ob == var);
+        UN_CHECK_EQ(ob, var, "u");
         Carrier_Node *node = structure->carrier.nodes + ob;
 
         // Set \x.x = I.

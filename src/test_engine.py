@@ -3,11 +3,17 @@ import pytest
 
 
 SIMPLIFY_EXAMPLES = [
+    ('TOP', 'TOP'),
+    ('BOT', 'BOT'),
     ('I', 'I'),
     ('K', 'K'),
     ('B', 'B'),
     ('C', 'C'),
     ('S', 'S'),
+    ('APP TOP I', 'TOP'),
+    ('APP APP TOP BOT BOT', 'TOP'),
+    ('APP BOT I', 'BOT'),
+    ('APP APP BOT TOP TOP', 'BOT'),
     ('APP I I', 'I'),
     ('APP I K', 'K'),
     ('APP K I', 'APP K I'),
@@ -22,6 +28,7 @@ SIMPLIFY_EXAMPLES = [
     ('APP S I', 'APP S I'),
     ('APP APP S I K', 'APP APP S I K'),
     ('APP APP APP S I K B', 'APP APP APP S I K B'),
+    ('APP APP APP S I I APP APP S I I', 'BOT'),
 ]
 
 
@@ -30,14 +37,14 @@ def test_simplfy_pristine_db(string, expected):
     engine.reset()
     term = engine.parse(string)
     actual = engine.serialize(term)
-    assert actual == expected
+    assert expected == actual
 
 
 @pytest.mark.parametrize('string,expected', SIMPLIFY_EXAMPLES)
 def test_simplfy_dirty_db(string, expected):
     term = engine.parse(string)
     actual = engine.serialize(term)
-    assert actual == expected
+    assert expected == actual
 
 
 @pytest.mark.parametrize('string,expected', SIMPLIFY_EXAMPLES)
@@ -46,7 +53,7 @@ def test_normalize_zero_budget_pristine_db(string, expected):
     term = engine.parse(string)
     term = engine.normalize(term, budget=[0])
     actual = engine.serialize(term)
-    assert actual == expected
+    assert expected == actual
 
 
 NORMALIZE_EXAMPLES = [
@@ -56,9 +63,7 @@ NORMALIZE_EXAMPLES = [
     ('APP APP APP S I K B', 'APP APP APP S I K B', 0),
     ('APP APP APP S S S S', 'APP APP S S APP S S', 1),
     ('APP APP APP S S S S', 'APP APP S S APP S S', 2),
-    ('APP APP APP S I I APP APP S I I', 'APP APP APP S I I APP APP S I I', 0),
-    ('APP APP APP S I I APP APP S I I', 'APP APP APP S I I APP APP S I I', 1),
-    ('APP APP APP S I I APP APP S I I', 'APP APP APP S I I APP APP S I I', 2),
+    ('APP APP APP S I I APP APP S I I', 'BOT', 0),
 ]
 
 
@@ -68,4 +73,4 @@ def test_normalize_pristine_db(string, expected, budget):
     term = engine.parse(string)
     term = engine.normalize(term, budget=[budget])
     actual = engine.serialize(term)
-    assert actual == expected
+    assert expected == actual

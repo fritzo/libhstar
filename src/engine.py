@@ -1,5 +1,9 @@
 """Python reference implementation of reduction engine."""
 
+import os
+
+DEBUG = int(os.environ.get('HSTAR_DEBUG', 0))
+
 # ----------------------------------------------------------------------------
 # Terms
 
@@ -17,6 +21,8 @@ def create_const(name):
     return term
 
 
+TOP = create_const('TOP')
+BOT = create_const('BOT')
 I = create_const('I')
 K = create_const('K')
 B = create_const('B')
@@ -45,6 +51,10 @@ def reset():
     _pending.clear()
     for term in _consts.itervalues():
         _terms[term] = term
+
+    # Add some equations.
+    sii = make_app(make_app(S, I, pending=False), I, pending=False)
+    _terms[_APP, sii, sii] = BOT
 
 
 # ----------------------------------------------------------------------------
@@ -85,10 +95,17 @@ def app(lhs, rhs, budget=[0]):
 
     # Head reduce.
     while True:
-        print('DEBUG {} {}'.format(head, args))
+        if DEBUG:
+            print('DEBUG {} {}'.format(head, args))
         if is_app(head):
             args.append(head[2])
             head = head[1]
+        elif head is TOP:
+            del args[:]
+            break
+        elif head is BOT:
+            del args[:]
+            break
         elif head is I:
             if len(args) < 1:
                 break
@@ -149,11 +166,11 @@ def normalize(term, budget=[0]):
 # ----------------------------------------------------------------------------
 # Serialization
 
-def parse_tokens(tokens):
+def _parse_tokens(tokens):
     head = next(tokens)
     if head == _APP:
-        lhs = parse_tokens(tokens)
-        rhs = parse_tokens(tokens)
+        lhs = _parse_tokens(tokens)
+        rhs = _parse_tokens(tokens)
         return app(lhs, rhs)
     elif head in _consts:
         return _consts[head]
@@ -163,20 +180,23 @@ def parse_tokens(tokens):
 
 def parse(string):
     tokens = iter(string.split())
-    term = parse_tokens(tokens)
+    try:
+        term = _parse_tokens(tokens)
+    except StopIteration:
+        raise ValueError('Early termination: {}'.format(string))
     extra = list(tokens)
     if extra:
         raise ValueError('Unexpected tokens: {}'.format(' '.join(extra)))
     return term
 
 
-def serialize_tokens(term, tokens):
+def _serialize_tokens(term, tokens):
     assert term in _terms, term
     tag = term[0]
     if tag is _APP:
         tokens.append(_APP)
-        serialize_tokens(term[1], tokens)
-        serialize_tokens(term[2], tokens)
+        _serialize_tokens(term[1], tokens)
+        _serialize_tokens(term[2], tokens)
     elif tag in _consts:
         tokens.append(tag)
     else:
@@ -185,5 +205,5 @@ def serialize_tokens(term, tokens):
 
 def serialize(term):
     tokens = []
-    serialize_tokens(term, tokens)
+    _serialize_tokens(term, tokens)
     return ' '.join(tokens)

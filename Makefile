@@ -42,7 +42,7 @@ release: FORCE
 	$(MAKE) -C build/release
 
 test: all FORCE
-	HSTAR_DEBUG=1 py.test -v hstar
+	HSTAR_LOG_LEVEL=10 py.test -v hstar  # 10 = DEBUG
 	@echo '----------------'
 	@echo 'PASSED ALL TESTS'
 

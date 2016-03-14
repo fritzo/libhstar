@@ -1,8 +1,45 @@
 """Python reference implementation of reduction engine."""
 
+import functools
+import inspect
+import logging
 import os
+import sys
 
-DEBUG = int(os.environ.get('HSTAR_DEBUG', 0))
+LOG_LEVEL = int(os.environ.get('HSTAR_LOG_LEVEL', logging.INFO))
+logging.basicConfig(stream=sys.stdout, level=LOG_LEVEL)
+LOG = logging.getLogger(__name__)
+MIN_LOG_INDENT = float('inf')
+# TODO replace indenting with formatter
+# http://code.activestate.com/recipes/412603
+
+
+def get_indent():
+    global MIN_LOG_INDENT
+    indent = len(inspect.getouterframes(inspect.currentframe(1)))
+    if indent < MIN_LOG_INDENT:
+        MIN_LOG_INDENT = indent
+    indent -= MIN_LOG_INDENT
+    return indent
+
+
+def logged(fun):
+
+    @functools.wraps(fun)
+    def decorated(*args, **kwargs):
+        if LOG.isEnabledFor(logging.debug):
+            args_str = ', '.join(
+                map(repr, args) +
+                ['{}={}'.format(k, repr(v)) for (k, v) in kwargs.iteritems()])
+            LOG.debug('%s%s(%s)', ' ' * get_indent(), fun.__name__, args_str)
+        return fun(*args, **kwargs)
+
+    return decorated
+
+
+def TODO(message=''):
+    raise NotImplementedError('TODO {}'.format(message))
+
 
 # ----------------------------------------------------------------------------
 # Terms
@@ -69,6 +106,7 @@ def assume_equal(dep, rep):
     _pending.discard(dep)
 
 
+@logged
 def reset():
     _terms.clear()
     _pending.clear()
@@ -104,6 +142,7 @@ def try_consume_budget(budget):
         return False
 
 
+@logged
 def app(lhs, rhs, budget=[0]):
     '''
     Eagerly linear-beta reduce.
@@ -125,8 +164,6 @@ def app(lhs, rhs, budget=[0]):
 
     # Head reduce.
     while True:
-        if DEBUG:
-            print('DEBUG {} {}'.format(head, args))
         if is_app(head):
             args.append(head[2])
             head = head[1]
@@ -214,6 +251,7 @@ def _parse_tokens(tokens):
         raise ValueError('Unrecognized token: {}'.format(head))
 
 
+@logged
 def parse(string):
     tokens = iter(string.split())
     try:
@@ -239,6 +277,7 @@ def _serialize_tokens(term, tokens):
         raise ValueError('Unserializable term: {}'.format(term))
 
 
+@logged
 def serialize(term):
     tokens = []
     _serialize_tokens(term, tokens)

@@ -10,17 +10,26 @@ LOG_LEVEL = int(os.environ.get('HSTAR_LOG_LEVEL', logging.INFO))
 logging.basicConfig(stream=sys.stdout, level=LOG_LEVEL)
 LOG = logging.getLogger(__name__)
 MIN_LOG_INDENT = float('inf')
-# TODO replace indenting with formatter
-# http://code.activestate.com/recipes/412603
 
 
-def get_indent():
-    global MIN_LOG_INDENT
-    indent = len(inspect.getouterframes(inspect.currentframe(1)))
-    if indent < MIN_LOG_INDENT:
-        MIN_LOG_INDENT = indent
-    indent -= MIN_LOG_INDENT
-    return indent
+class IndentFormatter(logging.Formatter):
+    def __init__(self, fmt=None, datefmt=None):
+        logging.Formatter.__init__(self, fmt, datefmt)
+        self.min_indent = float('inf')
+
+    def format(self, rec):
+        indent = len(inspect.getouterframes(inspect.currentframe(1)))
+        if indent < self.min_indent:
+            self.min_indent = indent
+        rec.indent = ' ' * (indent - self.min_indent)
+        out = logging.Formatter.format(self, rec)
+        del rec.indent
+        return out
+
+
+HANDLER = logging.StreamHandler()
+HANDLER.setFormatter(IndentFormatter("[%(levelname)s]%(indent)s%(message)s"))
+LOG.addHandler(HANDLER)
 
 
 def logged(fun):
@@ -31,7 +40,7 @@ def logged(fun):
             args_str = ', '.join(
                 map(repr, args) +
                 ['{}={}'.format(k, repr(v)) for (k, v) in kwargs.iteritems()])
-            LOG.debug('%s%s(%s)', ' ' * get_indent(), fun.__name__, args_str)
+            LOG.debug('%s(%s)', fun.__name__, args_str)
         return fun(*args, **kwargs)
 
     return decorated

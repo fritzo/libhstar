@@ -89,14 +89,34 @@ C = create_const('C')
 S = create_const('S')
 
 _APP = intern('APP')
+_JOIN = intern('JOIN')
+
+
+def is_atom(term):
+    return len(term) == 1
 
 
 def is_app(term):
     return term[0] is _APP
 
 
+def is_join(term):
+    return term[0] is _JOIN
+
+
 def make_app(lhs, rhs, pending):
     term = _APP, lhs, rhs
+    term = _terms.setdefault(term, term)
+    if pending:
+        _pending.add(term)
+    else:
+        _pending.discard(term)
+    return term
+
+
+def make_join(lhs, rhs, pending):
+    assert lhs < rhs, 'out of order'
+    term = _JOIN, lhs, rhs
     term = _terms.setdefault(term, term)
     if pending:
         _pending.add(term)
@@ -176,6 +196,8 @@ def app(lhs, rhs, budget=[0]):
         if is_app(head):
             args.append(head[2])
             head = head[1]
+        elif is_join(head):
+            TODO('yield nondeterministic choices')
         elif head is TOP:
             del args[:]
             break
@@ -238,10 +260,16 @@ def app(lhs, rhs, budget=[0]):
     return head
 
 
+@logged
+def join(lhs, rhs, budget=[0]):
+    TODO('create join')
+
+
 def normalize(term, budget=[0]):
     if is_app(term):
         return app(term[1], term[2], budget=budget)
     else:
+        assert is_atom(term), term
         return term
 
 
@@ -254,6 +282,16 @@ def _parse_tokens(tokens):
         lhs = _parse_tokens(tokens)
         rhs = _parse_tokens(tokens)
         return app(lhs, rhs)
+    elif head == _JOIN:
+        lhs = _parse_tokens(tokens)
+        rhs = _parse_tokens(tokens)
+        if lhs < rhs:
+            return join(lhs, rhs)
+        elif lhs > rhs:
+            return join(rhs, lhs)
+        else:
+            assert lhs == rhs
+            return lhs
     elif head in _consts:
         return _consts[head]
     else:
@@ -276,8 +314,8 @@ def parse(string):
 def _serialize_tokens(term, tokens):
     assert term in _terms, term
     tag = term[0]
-    if tag is _APP:
-        tokens.append(_APP)
+    if tag is _APP or tag is _JOIN:
+        tokens.append(tag)
         _serialize_tokens(term[1], tokens)
         _serialize_tokens(term[2], tokens)
     elif tag in _consts:

@@ -292,7 +292,7 @@ static void Hash_validate(const Hash *hash) {
 }
 
 static void Hash_init(Hash *hash, size_t size) {
-    UN_CHECK(is_power_of_2(size), "expected size a power of 2, actual %"PRIu64,
+    UN_CHECK(is_power_of_2(size), "expected size a power of 2, actual %zu",
              size);
     const size_t bytes = sizeof(Hash_Node) * size;
     hash->nodes = memalign_or_die(UN_CACHE_LINE_BYTES, bytes);
@@ -327,7 +327,7 @@ static inline uint64_t Hash_bucket(const Hash *hash, Word key) {
 static Hash_Node *Hash_find(const Hash *hash, Word key) {
     uint64_t pos = Hash_bucket(hash, key);
     Hash_Node *node = hash->nodes + pos;
-    UN_DCHECK_LT(hash->count, hash->size, PRIu64)  // Required for termination.
+    UN_DCHECK_LT(hash->count, hash->size, "zu")  // Required for termination.
     while (key.uint64s[0] != node->uint64s[0]) {
         if (!(node->uint64s[0])) return NULL;
         pos = (pos + 1UL) & hash->mask;
@@ -348,7 +348,7 @@ static inline Hash_Node *Hash_insert_nogrow(Hash *hash,
                                             const Hash_Node *node_to_insert) {
     uint64_t pos = Hash_bucket(hash, node_to_insert->key);
     Hash_Node *node = hash->nodes + pos;
-    UN_DCHECK_LT(hash->count, hash->size, PRIu64)  // Required for termination.
+    UN_DCHECK_LT(hash->count, hash->size, "zu")  // Required for termination.
     while (node->uint64s[0]) {
         UN_DCHECK_NE(node->uint64s[0], node_to_insert->uint64s[0], PRIu64)
         pos = (pos + 1UL) & hash->mask;

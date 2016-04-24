@@ -5,10 +5,8 @@ C_FILES := $(shell find src | grep '\.[ch]$$')
 all: python debug release
 
 lint: FORCE
-	$(info pyflakes)
-	@pyflakes $(PY_FILES)
-	$(info pep8)
-	@pep8 --ignore=E402 $(PY_FILES)
+	$(info flake8)
+	@flake8 --ignore=E402 $(PY_FILES)
 
 format: FORCE
 	pyformat -i $(PY_FILES)

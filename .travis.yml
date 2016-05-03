@@ -1,0 +1,52 @@
+language: python
+
+python:
+  - "2.7"
+  - "3.5"
+  - "pypy"
+
+sudo: false
+
+cache:
+  - apt
+  - ccache
+  - pip
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-precise-3.5
+    packages:
+    - ccache
+    - clang-3.5
+    - cmake
+    - gcc-4.8
+    - g++-4.8
+    - gdb
+    - make
+    - python-pip
+
+virtualenv:
+  system_site_packages: true
+
+install:
+  - pip install -r requirements.txt
+  - pip install -e .
+
+env:
+  - CC=gcc-4.8 CXX=gcc-4.8
+  - CC=clang-3.5 CXX=clang++-3.5
+
+before_script:
+  - export MAKEFLAGS="-j 2 -S"
+  - gcc --version
+  - clang --version
+  - cmake --version
+  - ccache --version
+  - python --version
+  - pip freeze
+  - env
+
+script:
+  - make test

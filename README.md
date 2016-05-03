@@ -51,3 +51,7 @@ Pure untyped extensional non-deterministic memoized combinator machine.
   Sebastian Fischer, Oleg Kiselyov, Chung-Chieh Shan (2011)
   [Purely functional lazy nondeterministic programming](http://okmij.org/ftp/Haskell/FLP/lazy-nondet.pdf)
 
+## License
+
+Copyright (c) 2016 Fritz Obermeyer.<br/>
+Libhstar is licensed under the [Apache 2.0 License](/LICENSE).

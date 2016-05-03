@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
-project(libhstar)
+project(libhstar C)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -g -std=c11")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -Werror")

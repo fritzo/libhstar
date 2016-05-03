@@ -237,12 +237,16 @@ static void Carrier_test(unsigned int seed) {
         Carrier_free(&carrier, 1);
         Carrier_free(&carrier, 2);
         ob = Carrier_alloc(&carrier);
+        UN_DCHECK_EQ(ob, 2U, "u");
         Carrier_free(&carrier, 2);
         ob = Carrier_alloc(&carrier);
+        UN_DCHECK_EQ(ob, 2U, "u");
         Carrier_free(&carrier, 1);
         ob = Carrier_alloc(&carrier);
+        UN_DCHECK_EQ(ob, 1U, "u");
         Carrier_free(&carrier, 3);
         ob = Carrier_alloc(&carrier);
+        UN_DCHECK_EQ(ob, 3U, "u");
         Carrier_free(&carrier, 5);
     }
 }

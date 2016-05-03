@@ -1,5 +1,7 @@
 # libhstar
 
+[![Build Status](https://travis-ci.org/fritzo/libhstar.svg?branch=master)](https://travis-ci.org/fritzo/libhstar)
+
 Pure untyped extensional non-deterministic memoized combinator machine.
 
 ## TODO

@@ -13,6 +13,7 @@ MIN_LOG_INDENT = float('inf')
 
 
 class IndentFormatter(logging.Formatter):
+
     def __init__(self, fmt=None, datefmt=None):
         logging.Formatter.__init__(self, fmt, datefmt)
         self.min_indent = float('inf')
@@ -28,7 +29,7 @@ class IndentFormatter(logging.Formatter):
 
 
 HANDLER = logging.StreamHandler()
-HANDLER.setFormatter(IndentFormatter("[%(levelname)s]%(indent)s%(message)s"))
+HANDLER.setFormatter(IndentFormatter('[%(levelname)s]%(indent)s%(message)s'))
 LOG.addHandler(HANDLER)
 
 

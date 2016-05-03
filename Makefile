@@ -7,11 +7,13 @@ all: python debug release
 lint: FORCE
 	$(info flake8)
 	@flake8 --ignore=E402 $(PY_FILES)
+	@# TODO use clang-tidy
 
 format: FORCE
-	pyformat -i $(PY_FILES)
-	clang-format -i $(C_FILES)
-	@# TODO use clang-tidy
+	$(info pyformat)
+	@pyformat -i --aggressive $(PY_FILES)
+	$(info clang-format)
+	@clang-format -i $(C_FILES)
 
 python: lint FORCE
 	pip install -e .

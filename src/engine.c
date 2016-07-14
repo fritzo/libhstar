@@ -11,7 +11,7 @@
 // static_assert should be defined in assert.h.
 #if !defined(static_assert)
 // #warning "ignoring static_assert(-,-)"
-#define static_assert(cond, message)
+#define static_assert(cond, message) struct UN_SWALLOW_SEMICOLON
 #endif  // !defined(static_assert)
 
 #if defined(__GNUC__) || defined(__clang__)

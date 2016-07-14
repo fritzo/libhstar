@@ -46,6 +46,12 @@ test: all FORCE
 	@echo '----------------'
 	@echo 'PASSED ALL TESTS'
 
+# This uses https://github.com/clibs/clib
+update-deps: FORCE
+	clib install silentbicycle/greatest -o src/third_party
+
+	
+
 clean: FORCE
 	rm -rf build lib
 	git clean -fdx -e hstar.egg-info -e .idea

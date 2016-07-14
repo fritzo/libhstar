@@ -1,0 +1,16 @@
+{
+    "name": "libhstar",
+    "version": "0.0.1",
+    "repo": "fritzo/libhstar",
+    "description": "Pure untyped nondeterministic combinator machine",
+    "keywords": ["combinator", "functional", "interpreter"],
+    "license": "Apache 2.0",
+    "src": [
+        "src/engine.c",
+        "src/engine.h",
+        "src/cli.c"
+    ],
+    "dependencies": {
+        "silentbicycle/greatest": "1.2.1"
+    }
+}

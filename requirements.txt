@@ -1,7 +1,0 @@
-cffi>=1.0.0
-flake8
-parsable>=0.2.0
-psutil
-pyformat
-pytest
-simplejson

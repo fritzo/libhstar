@@ -1,22 +1,14 @@
 # .SILENT:
-PY_FILES := *.py $(shell find src | grep '\.py$$')
 C_FILES := $(shell find src | grep -v third_party | grep '\.[ch]$$')
 
-all: python debug release
+all: debug release
 
 lint: FORCE
-	$(info flake8)
-	@flake8 --ignore=E402 $(PY_FILES)
 	@# TODO use clang-tidy
 
 format: FORCE
-	$(info pyformat)
-	@pyformat -i --aggressive $(PY_FILES)
 	$(info clang-format)
 	@clang-format -i $(C_FILES)
-
-python: lint FORCE
-	pip install -e .
 
 CMAKE = cmake
 ifdef CC
@@ -40,7 +32,6 @@ release: FORCE
 
 test: all FORCE
 	CTEST_OUTPUT_ON_FAILURE=1 $(MAKE) -C build/debug test
-	HSTAR_LOG_LEVEL=10 py.test -v hstar  # 10 = DEBUG
 	@echo '----------------'
 	@echo 'PASSED ALL TESTS'
 
@@ -50,6 +41,6 @@ update-deps: FORCE
 
 clean: FORCE
 	rm -rf build lib
-	git clean -fdx -e hstar.egg-info -e .idea
+	git clean -fdx -e .idea
 
 FORCE:

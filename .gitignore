@@ -1,9 +1,5 @@
 build/
 data/
-*.egg-info/
-*.eggs
-*.pyo
-*.pyc
 .idea/
 .cache/
 

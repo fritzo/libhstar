@@ -1,32 +1,38 @@
 language: c
 
-compiler:
-  - clang
-  - gcc
-
 sudo: false
 
 cache:
   - apt
   - ccache
 
-addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    - llvm-toolchain-precise-3.5
-    packages:
-    - ccache
-    - clang-3.5
-    - cmake
-    - gcc-4.8
-    - g++-4.8
-    - gdb
-    - make
-
-# env:
-#   - CC=gcc-4.8 CXX=g++-4.8
-#   - CC=clang-3.5 CXX=clang++-3.5
+matrix:
+  include:
+    - compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-4.8
+            - ccache
+            - cmake
+            - gdb
+            - make
+      env: CC=gcc-4.8 COMPILER=gcc-4.8
+    - compiler: clang
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.5
+          packages:
+            - clang-3.5
+            - ccache
+            - cmake
+            - gdb
+            - make
+      env: CC=clang-3.5 COMPILER=clang-3.5
 
 before_script:
   - export MAKEFLAGS="-j 2 -S"

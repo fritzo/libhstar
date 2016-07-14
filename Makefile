@@ -22,9 +22,6 @@ CMAKE = cmake
 ifdef CC
 	CMAKE += -DCMAKE_C_COMPILER=$(CC)
 endif
-ifdef CXX
-	CMAKE += -DCMAKE_CXX_COMPILER=$(CXX)
-endif
 
 debug: FORCE
 	test -e build/debug || ( \

@@ -10,7 +10,7 @@
 
 // static_assert should be defined in assert.h.
 #if !defined(static_assert)
-#warning "ignoring static_assert(-,-)"
+// #warning "ignoring static_assert(-,-)"
 #define static_assert(cond, message)
 #endif  // !defined(static_assert)
 
@@ -18,7 +18,7 @@
 #define likely(x) __builtin_expect(!!(x), true)
 #define unlikely(x) __builtin_expect(!!(x), false)
 #else  // defined(__GNUC__) || defined(__clang__)
-#warning "ignoring likely(-), unlikely(-)"
+// #warning "ignoring likely(-), unlikely(-)"
 #define likely(x) (x)
 #define unlikely(x) (x)
 #endif  // defined(__GNUC__) || defined(__clang__)
@@ -258,7 +258,8 @@ typedef struct {
     Ob lhs;
     Ob rhs;
 } ObPair;
-static_assert(sizeof(ObPair) == 8, "OpPair has wrong size");
+static_assert(sizeof(Ob) == 4, "Ob has wrong size");
+static_assert(sizeof(ObPair) == 8, "ObPair has wrong size");
 
 typedef union {
     Ob ob;

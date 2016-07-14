@@ -1,5 +1,4 @@
 language: c
-
 sudo: false
 
 cache:
@@ -16,10 +15,7 @@ matrix:
           packages:
             - gcc-4.8
             - ccache
-            - cmake
-            - gdb
-            - make
-      env: CC=gcc-4.8 COMPILER=gcc-4.8
+      env: COMPILER=gcc-4.8
     - compiler: clang
       addons:
         apt:
@@ -29,12 +25,10 @@ matrix:
           packages:
             - clang-3.5
             - ccache
-            - cmake
-            - gdb
-            - make
-      env: CC=clang-3.5 COMPILER=clang-3.5
+      env: COMPILER=clang-3.5
 
 before_script:
+  - export CC=$COMPILER
   - export MAKEFLAGS="-j 2 -S"
   - gcc --version
   - clang --version

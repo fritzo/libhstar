@@ -42,6 +42,7 @@ release: FORCE
 	$(MAKE) -C build/release
 
 test: all FORCE
+	CTEST_OUTPUT_ON_FAILURE=1 $(MAKE) -C build/debug test
 	HSTAR_LOG_LEVEL=10 py.test -v hstar  # 10 = DEBUG
 	@echo '----------------'
 	@echo 'PASSED ALL TESTS'
@@ -49,8 +50,6 @@ test: all FORCE
 # This uses https://github.com/clibs/clib
 update-deps: FORCE
 	clib install silentbicycle/greatest -o src/third_party
-
-	
 
 clean: FORCE
 	rm -rf build lib

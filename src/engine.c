@@ -217,36 +217,36 @@ static void Carrier_test(unsigned int seed) {
         Carrier_init(&carrier, init_capacity);
         Ob ob;
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK_EQ(ob, 1U, "u");
+        UN_CHECK_EQ(ob, 1U, "u");
 
         Carrier_free(&carrier, 1);
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK_EQ(ob, 1U, "u");
+        UN_CHECK_EQ(ob, 1U, "u");
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK_EQ(ob, 2U, "u");
+        UN_CHECK_EQ(ob, 2U, "u");
 
         Carrier_free(&carrier, 1);
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK_EQ(ob, 1U, "u");
+        UN_CHECK_EQ(ob, 1U, "u");
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK_EQ(ob, 3U, "u");
+        UN_CHECK_EQ(ob, 3U, "u");
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK_EQ(ob, 4U, "u");
+        UN_CHECK_EQ(ob, 4U, "u");
 
         Carrier_free(&carrier, 3);
         Carrier_free(&carrier, 1);
         Carrier_free(&carrier, 2);
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK_EQ(ob, 2U, "u");
+        UN_CHECK_EQ(ob, 2U, "u");
         Carrier_free(&carrier, 2);
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK_EQ(ob, 2U, "u");
+        UN_CHECK_EQ(ob, 2U, "u");
         Carrier_free(&carrier, 1);
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK_EQ(ob, 1U, "u");
+        UN_CHECK_EQ(ob, 1U, "u");
         Carrier_free(&carrier, 3);
         ob = Carrier_alloc(&carrier);
-        UN_DCHECK_EQ(ob, 3U, "u");
+        UN_CHECK_EQ(ob, 3U, "u");
         Carrier_free(&carrier, 5);
     }
 }

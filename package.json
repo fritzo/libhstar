@@ -6,8 +6,9 @@
     "keywords": ["combinator", "functional", "interpreter"],
     "license": "Apache 2.0",
     "src": [
-        "src/engine.c",
         "src/engine.h",
+        "src/engine.c",
+        "src/engine_test.c",
         "src/cli.c"
     ],
     "dependencies": {

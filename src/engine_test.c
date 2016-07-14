@@ -5,9 +5,7 @@
 
 #include "engine.h"
 
-GREATEST_TEST test_framework(void) {
-    PASS();
-}
+GREATEST_TEST test_framework(void) { PASS(); }
 
 GREATEST_TEST test_engine_init(void) {
     SKIP();

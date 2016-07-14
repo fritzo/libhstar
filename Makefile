@@ -1,6 +1,6 @@
 # .SILENT:
 PY_FILES := *.py $(shell find src | grep '\.py$$')
-C_FILES := $(shell find src | grep '\.[ch]$$')
+C_FILES := $(shell find src | grep -v third_party | grep '\.[ch]$$')
 
 all: python debug release
 
